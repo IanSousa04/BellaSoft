@@ -21,6 +21,8 @@ import {
   SelectChangeEvent,
   InputAdornment,
   Alert,
+  Chip,
+  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -452,6 +454,24 @@ const Schedule = () => {
     setAppointments(updatedAppointments);
   };
 
+  // Get cities where a professional works
+  const getCitiesForProfessional = (professionalId: string) => {
+    const cityIds = mockProfessionalCities
+      .filter(pc => pc.professionalId === professionalId)
+      .map(pc => pc.cityId);
+    
+    return mockCities
+      .filter(city => cityIds.includes(city.id) && city.active)
+      .map(city => ({ id: city.id, name: city.name, state: city.state }));
+  };
+
+  // Check if a professional can work in a specific city
+  const canProfessionalWorkInCity = (professionalId: string, cityId: string) => {
+    return mockProfessionalCities.some(
+      pc => pc.professionalId === professionalId && pc.cityId === cityId
+    );
+  };
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
@@ -586,167 +606,221 @@ const Schedule = () => {
 
             <DragDropContext onDragEnd={handleDragEnd}>
               {/* Professional columns */}
-              {filteredProfessionals.map((professional) => (
-                <Box key={professional.id} sx={{ flex: 1, minWidth: 250 }}>
-                  <Box
-                    sx={{
-                      height: 60,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderBottom: `1px solid ${theme.palette.divider}`,
-                      px: 1,
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Avatar
-                        src={professional.avatar}
-                        sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}
-                      >
-                        {professional.name.charAt(0)}
-                      </Avatar>
-                      <Typography variant="subtitle1" fontWeight="medium" noWrap>
-                        {professional.name}
-                      </Typography>
+              {filteredProfessionals.map((professional) => {
+                const professionalCitiesList = getCitiesForProfessional(professional.id);
+                
+                return (
+                  <Box key={professional.id} sx={{ flex: 1, minWidth: 250 }}>
+                    <Box
+                      sx={{
+                        height: 60,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                        px: 1,
+                        position: 'relative',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Avatar
+                          src={professional.avatar}
+                          sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}
+                        >
+                          {professional.name.charAt(0)}
+                        </Avatar>
+                        <Typography variant="subtitle1" fontWeight="medium" noWrap>
+                          {professional.name}
+                        </Typography>
+                      </Box>
+                      
+                      {/* Show cities where professional works */}
+                      {cityFilter === 'all' && professionalCitiesList.length > 0 && (
+                        <Box sx={{ 
+                          display: 'flex', 
+                          flexWrap: 'wrap', 
+                          justifyContent: 'center',
+                          gap: 0.5,
+                          mt: 0.5
+                        }}>
+                          {professionalCitiesList.slice(0, 2).map((city) => (
+                            <Chip
+                              key={city.id}
+                              label={`${city.name}`}
+                              size="small"
+                              variant="outlined"
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          ))}
+                          {professionalCitiesList.length > 2 && (
+                            <Chip
+                              label={`+${professionalCitiesList.length - 2}`}
+                              size="small"
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Box>
+                      )}
+                      
+                      {/* Show selected city */}
+                      {cityFilter !== 'all' && (
+                        <Box sx={{ mt: 0.5 }}>
+                          <Chip
+                            label={mockCities.find(c => c.id === cityFilter)?.name || ''}
+                            size="small"
+                            color={canProfessionalWorkInCity(professional.id, cityFilter) ? 'primary' : 'default'}
+                            variant="outlined"
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                          />
+                        </Box>
+                      )}
                     </Box>
-                  </Box>
-                  
-                  {timeSlots.map((slot) => {
-                    const appointment = getAppointmentForTimeSlot(slot, professional.id);
-                    const isOccupied = isTimeSlotOccupied(slot, professional.id);
                     
-                    return (
-                      <Droppable 
-                        droppableId={`${professional.id}|${slot.id}`} 
-                        key={`${professional.id}-${slot.id}`}
-                        isDropDisabled={isOccupied}
-                      >
-                        {(provided, snapshot) => (
-                          <Box
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            sx={{
-                              height: 80,
-                              borderBottom: `1px solid ${theme.palette.divider}`,
-                              borderLeft: `1px solid ${theme.palette.divider}`,
-                              position: 'relative',
-                              backgroundColor: snapshot.isDraggingOver 
-                                ? 'rgba(156, 39, 176, 0.08)' 
-                                : isOccupied 
-                                  ? 'rgba(0, 0, 0, 0.04)' 
-                                  : 'transparent',
-                            }}
-                          >
-                            {appointment ? (
-                              <Draggable 
-                                draggableId={appointment.id} 
-                                index={0}
-                                key={appointment.id}
-                              >
-                                {(provided, snapshot) => (
-                                  <Paper
-                                    elevation={snapshot.isDragging ? 3 : 0}
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    sx={{
-                                      position: 'absolute',
-                                      top: 4,
-                                      left: 4,
-                                      right: 4,
-                                      bottom: 4,
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      p: 1,
-                                      borderLeft: `4px solid ${getStatusColor(appointment.status)}`,
-                                      backgroundColor: snapshot.isDragging 
-                                        ? `${getStatusColor(appointment.status)}25` 
-                                        : `${getStatusColor(appointment.status)}15`,
-                                      '&:hover': {
-                                        boxShadow: theme.shadows[2],
-                                      },
-                                      cursor: 'grab',
-                                    }}
-                                  >
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                      <Typography variant="body2" fontWeight="medium" noWrap>
-                                        {appointment.clientName}
+                    {timeSlots.map((slot) => {
+                      const appointment = getAppointmentForTimeSlot(slot, professional.id);
+                      const isOccupied = isTimeSlotOccupied(slot, professional.id);
+                      
+                      // Check if professional can work in the filtered city
+                      const canWorkInFilteredCity = cityFilter === 'all' || 
+                        canProfessionalWorkInCity(professional.id, cityFilter);
+                      
+                      return (
+                        <Droppable 
+                          droppableId={`${professional.id}|${slot.id}`} 
+                          key={`${professional.id}-${slot.id}`}
+                          isDropDisabled={isOccupied || !canWorkInFilteredCity}
+                        >
+                          {(provided, snapshot) => (
+                            <Box
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              sx={{
+                                height: 80,
+                                borderBottom: `1px solid ${theme.palette.divider}`,
+                                borderLeft: `1px solid ${theme.palette.divider}`,
+                                position: 'relative',
+                                backgroundColor: !canWorkInFilteredCity
+                                  ? 'rgba(0, 0, 0, 0.04)'
+                                  : snapshot.isDraggingOver 
+                                    ? 'rgba(156, 39, 176, 0.08)' 
+                                    : isOccupied 
+                                      ? 'rgba(0, 0, 0, 0.04)' 
+                                      : 'transparent',
+                                opacity: !canWorkInFilteredCity ? 0.5 : 1,
+                              }}
+                            >
+                              {appointment ? (
+                                <Draggable 
+                                  draggableId={appointment.id} 
+                                  index={0}
+                                  key={appointment.id}
+                                >
+                                  {(provided, snapshot) => (
+                                    <Paper
+                                      elevation={snapshot.isDragging ? 3 : 0}
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      sx={{
+                                        position: 'absolute',
+                                        top: 4,
+                                        left: 4,
+                                        right: 4,
+                                        bottom: 4,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        p: 1,
+                                        borderLeft: `4px solid ${getStatusColor(appointment.status)}`,
+                                        backgroundColor: snapshot.isDragging 
+                                          ? `${getStatusColor(appointment.status)}25` 
+                                          : `${getStatusColor(appointment.status)}15`,
+                                        '&:hover': {
+                                          boxShadow: theme.shadows[2],
+                                        },
+                                        cursor: 'grab',
+                                      }}
+                                    >
+                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <Typography variant="body2" fontWeight="medium" noWrap>
+                                          {appointment.clientName}
+                                        </Typography>
+                                        <Box>
+                                          <Tooltip title="Editar">
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenDialog(appointment);
+                                              }}
+                                            >
+                                              <EditIcon fontSize="small" />
+                                            </IconButton>
+                                          </Tooltip>
+                                          <Tooltip title="Excluir">
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenDeleteDialog(appointment);
+                                              }}
+                                            >
+                                              <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                          </Tooltip>
+                                        </Box>
+                                      </Box>
+                                      <Typography variant="caption" color="text.secondary" noWrap>
+                                        {appointment.serviceName}
                                       </Typography>
-                                      <Box>
-                                        <Tooltip title="Editar">
-                                          <IconButton
-                                            size="small"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleOpenDialog(appointment);
-                                            }}
-                                          >
-                                            <EditIcon fontSize="small" />
-                                          </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Excluir">
-                                          <IconButton
-                                            size="small"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleOpenDeleteDialog(appointment);
-                                            }}
-                                          >
-                                            <DeleteIcon fontSize="small" />
-                                          </IconButton>
-                                        </Tooltip>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 'auto', gap: 1 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                          <AccessTimeIcon fontSize="small" sx={{ fontSize: 14, mr: 0.5, color: theme.palette.text.secondary }} />
+                                          <Typography variant="caption" color="text.secondary">
+                                            {format(parseISO(appointment.date), 'HH:mm')}
+                                          </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                          <LocationCityIcon fontSize="small" sx={{ fontSize: 14, mr: 0.5, color: theme.palette.text.secondary }} />
+                                          <Typography variant="caption" color="text.secondary">
+                                            {appointment.cityName}
+                                          </Typography>
+                                        </Box>
                                       </Box>
-                                    </Box>
-                                    <Typography variant="caption" color="text.secondary" noWrap>
-                                      {appointment.serviceName}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 'auto', gap: 1 }}>
-                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <AccessTimeIcon fontSize="small" sx={{ fontSize: 14, mr: 0.5, color: theme.palette.text.secondary }} />
-                                        <Typography variant="caption" color="text.secondary">
-                                          {format(parseISO(appointment.date), 'HH:mm')}
-                                        </Typography>
-                                      </Box>
-                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <LocationCityIcon fontSize="small" sx={{ fontSize: 14, mr: 0.5, color: theme.palette.text.secondary }} />
-                                        <Typography variant="caption" color="text.secondary">
-                                          {appointment.cityName}
-                                        </Typography>
-                                      </Box>
-                                    </Box>
-                                  </Paper>
-                                )}
-                              </Draggable>
-                            ) : (
-                              !isOccupied && (
-                                <Tooltip title="Adicionar agendamento">
-                                  <IconButton
-                                    size="small"
-                                    sx={{
-                                      position: 'absolute',
-                                      top: '50%',
-                                      left: '50%',
-                                      transform: 'translate(-50%, -50%)',
-                                      opacity: 0.3,
-                                      '&:hover': {
-                                        opacity: 1,
-                                      },
-                                    }}
-                                    onClick={() => handleOpenDialog(undefined, slot.time, professional.id)}
-                                  >
-                                    <AddIcon />
-                                  </IconButton>
-                                </Tooltip>
-                              )
-                            )}
-                            {provided.placeholder}
-                          </Box>
-                        )}
-                      </Droppable>
-                    );
-                  })}
-                </Box>
-              ))}
+                                    </Paper>
+                                  )}
+                                </Draggable>
+                              ) : (
+                                !isOccupied && canWorkInFilteredCity && (
+                                  <Tooltip title="Adicionar agendamento">
+                                    <IconButton
+                                      size="small"
+                                      sx={{
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        opacity: 0.3,
+                                        '&:hover': {
+                                          opacity: 1,
+                                        },
+                                      }}
+                                      onClick={() => handleOpenDialog(undefined, slot.time, professional.id)}
+                                    >
+                                      <AddIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                )
+                              )}
+                              {provided.placeholder}
+                            </Box>
+                          )}
+                        </Droppable>
+                      );
+                    })}
+                  </Box>
+                );
+              })}
             </DragDropContext>
           </Box>
         </Box>
@@ -807,14 +881,39 @@ const Schedule = () => {
               </Select>
             </FormControl>
 
+            {formData.professionalId && (
+              <Box sx={{ mt: 2, mb: 1 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Cidades de atendimento do profissional:
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {getCitiesForProfessional(formData.professionalId).map((city) => (
+                    <Chip
+                      key={city.id}
+                      label={`${city.name} - ${city.state}`}
+                      size="small"
+                      color={formData.cityId === city.id ? 'primary' : 'default'}
+                      onClick={() => setFormData({ ...formData, cityId: city.id })}
+                      sx={{ mb: 0.5 }}
+                    />
+                  ))}
+                </Box>
+                {getCitiesForProfessional(formData.professionalId).length === 0 && (
+                  <Typography variant="body2" color="error">
+                    Este profissional não possui cidades de atendimento cadastradas.
+                  </Typography>
+                )}
+              </Box>
+            )}
+
             <FormControl fullWidth margin="normal">
-              <InputLabel id="city-label">Cidade</InputLabel>
+              <InputLabel id="city-label">Cidade do Atendimento</InputLabel>
               <Select
                 labelId="city-label"
                 id="cityId"
                 name="cityId"
                 value={formData.cityId}
-                label="Cidade"
+                label="Cidade do Atendimento"
                 onChange={handleSelectChange}
                 startAdornment={
                   <InputAdornment position="start">

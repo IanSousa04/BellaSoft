@@ -32,6 +32,14 @@ import {
   CardActions,
   useMediaQuery,
   useTheme,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Badge,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -42,6 +50,8 @@ import {
   FilterList as FilterListIcon,
   ViewList as ViewListIcon,
   ViewModule as ViewModuleIcon,
+  LocationCity as LocationCityIcon,
+  Map as MapIcon,
 } from '@mui/icons-material';
 import { mockCities, mockProfessionalCities, mockProfessionals } from '../data/mockData';
 
@@ -249,7 +259,14 @@ const Professionals = () => {
         (professional) => professional.id !== currentProfessional.id
       );
       setProfessionals(updatedProfessionals);
-      filterProfessionals(searchTerm, statusFilter);
+      
+      // Also remove any city associations
+      const updatedProfessionalCities = professionalCities.filter(
+        (pc) => pc.professionalId !== currentProfessional.id
+      );
+      setProfessionalCities(updatedProfessionalCities);
+      
+      filterProfessionals(searchTerm, statusFilter, cityFilter);
     }
     handleCloseDeleteDialog();
   };
@@ -265,6 +282,65 @@ const Professionals = () => {
 
   const toggleViewMode = () => {
     setViewMode(viewMode === 'list' ? 'grid' : 'list');
+  };
+
+  // Get cities for a professional
+  const getCitiesForProfessional = (professionalId: string) => {
+    const cityIds = professionalCities
+      .filter(pc => pc.professionalId === professionalId)
+      .map(pc => pc.cityId);
+    
+    return mockCities
+      .filter(city => cityIds.includes(city.id) && city.active)
+      .map(city => ({ id: city.id, name: city.name, state: city.state }));
+  };
+
+  // Open cities management dialog
+  const handleOpenCitiesDialog = (professional: Professional) => {
+    setCurrentProfessional(professional);
+    
+    // Get current cities for this professional
+    const cityIds = professionalCities
+      .filter(pc => pc.professionalId === professional.id)
+      .map(pc => pc.cityId);
+    
+    setSelectedCities(cityIds);
+    setOpenCitiesDialog(true);
+  };
+
+  // Close cities management dialog
+  const handleCloseCitiesDialog = () => {
+    setOpenCitiesDialog(false);
+  };
+
+  // Handle city selection change
+  const handleCitySelectionChange = (cityId: string) => {
+    setSelectedCities(prev => {
+      if (prev.includes(cityId)) {
+        return prev.filter(id => id !== cityId);
+      } else {
+        return [...prev, cityId];
+      }
+    });
+  };
+
+  // Save professional cities
+  const handleSaveProfessionalCities = () => {
+    if (!currentProfessional) return;
+    
+    // Remove existing associations
+    const filteredProfessionalCities = professionalCities.filter(
+      pc => pc.professionalId !== currentProfessional.id
+    );
+    
+    // Add new associations
+    const newProfessionalCities = selectedCities.map(cityId => ({
+      professionalId: currentProfessional.id,
+      cityId
+    }));
+    
+    setProfessionalCities([...filteredProfessionalCities, ...newProfessionalCities]);
+    setOpenCitiesDialog(false);
   };
 
   return (
@@ -320,6 +396,29 @@ const Professionals = () => {
               </Select>
             </FormControl>
             
+            <FormControl fullWidth size="small">
+              <InputLabel id="city-filter-label">Cidade</InputLabel>
+              <Select
+                labelId="city-filter-label"
+                id="city-filter"
+                value={cityFilter}
+                label="Cidade"
+                onChange={handleCityFilterChange}
+                startAdornment={
+                  <InputAdornment position="start">
+                    <LocationCityIcon fontSize="small" />
+                  </InputAdornment>
+                }
+              >
+                <MenuItem value="all">Todas as cidades</MenuItem>
+                {activeCities.map((city) => (
+                  <MenuItem key={city.id} value={city.id}>
+                    {city.name} - {city.state}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
             <IconButton 
               color="primary" 
               onClick={toggleViewMode}
@@ -340,6 +439,7 @@ const Professionals = () => {
                     <TableCell>Email</TableCell>
                     <TableCell>Telefone</TableCell>
                     <TableCell>Especialização</TableCell>
+                    <TableCell>Cidades</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell align="right">Ações</TableCell>
                   </TableRow>
@@ -347,57 +447,96 @@ const Professionals = () => {
                 <TableBody>
                   {filteredProfessionals
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((professional) => (
-                      <TableRow key={professional.id} hover>
-                        <TableCell component="th" scope="row">
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Avatar
-                              src={professional.avatar}
-                              sx={{ mr: 2, bgcolor: 'primary.main' }}
-                            >
-                              {getInitials(professional.name)}
-                            </Avatar>
-                            <Typography variant="body1">{professional.name}</Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>{professional.email}</TableCell>
-                        <TableCell>{professional.phone}</TableCell>
-                        <TableCell>{professional.specialization}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={professional.status === 'active' ? 'Ativo' : 'Inativo'}
-                            color={professional.status === 'active' ? 'success' : 'default'}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          <Tooltip title="Ver Agenda">
-                            <IconButton color="primary">
-                              <CalendarIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Editar">
-                            <IconButton
-                              color="primary"
-                              onClick={() => handleOpenDialog(professional)}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Excluir">
-                            <IconButton
-                              color="error"
-                              onClick={() => handleOpenDeleteDialog(professional)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    .map((professional) => {
+                      const professionalCitiesList = getCitiesForProfessional(professional.id);
+                      
+                      return (
+                        <TableRow key={professional.id} hover>
+                          <TableCell component="th" scope="row">
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Avatar
+                                src={professional.avatar}
+                                sx={{ mr: 2, bgcolor: 'primary.main' }}
+                              >
+                                {getInitials(professional.name)}
+                              </Avatar>
+                              <Typography variant="body1">{professional.name}</Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>{professional.email}</TableCell>
+                          <TableCell>{professional.phone}</TableCell>
+                          <TableCell>{professional.specialization}</TableCell>
+                          <TableCell>
+                            {professionalCitiesList.length > 0 ? (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {professionalCitiesList.slice(0, 2).map((city) => (
+                                  <Chip
+                                    key={city.id}
+                                    label={`${city.name} - ${city.state}`}
+                                    size="small"
+                                    icon={<LocationCityIcon fontSize="small" />}
+                                    sx={{ mr: 0.5 }}
+                                  />
+                                ))}
+                                {professionalCitiesList.length > 2 && (
+                                  <Chip
+                                    label={`+${professionalCitiesList.length - 2}`}
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                  />
+                                )}
+                              </Box>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                Nenhuma cidade atribuída
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={professional.status === 'active' ? 'Ativo' : 'Inativo'}
+                              color={professional.status === 'active' ? 'success' : 'default'}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Tooltip title="Gerenciar Cidades">
+                              <IconButton 
+                                color="primary"
+                                onClick={() => handleOpenCitiesDialog(professional)}
+                              >
+                                <MapIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Ver Agenda">
+                              <IconButton color="primary">
+                                <CalendarIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Editar">
+                              <IconButton
+                                color="primary"
+                                onClick={() => handleOpenDialog(professional)}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Excluir">
+                              <IconButton
+                                color="error"
+                                onClick={() => handleOpenDeleteDialog(professional)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   {filteredProfessionals.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                      <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                         <Typography variant="body1" color="text.secondary">
                           Nenhum profissional encontrado.
                         </Typography>
@@ -426,114 +565,150 @@ const Professionals = () => {
             <Grid container spacing={3}>
               {filteredProfessionals
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((professional) => (
-                  <Grid item xs={12} sm={6} md={4} key={professional.id}>
-                    <Card 
-                      className="card-hover"
-                      sx={{ 
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        position: 'relative',
-                      }}
-                    >
-                      <Box 
+                .map((professional) => {
+                  const professionalCitiesList = getCitiesForProfessional(professional.id);
+                  
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={professional.id}>
+                      <Card 
+                        className="card-hover"
                         sx={{ 
-                          position: 'absolute', 
-                          top: 10, 
-                          right: 10,
-                          zIndex: 1,
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          position: 'relative',
                         }}
                       >
-                        <Chip
-                          label={professional.status === 'active' ? 'Ativo' : 'Inativo'}
-                          color={professional.status === 'active' ? 'success' : 'default'}
-                          size="small"
-                        />
-                      </Box>
-                      <Box 
-                        sx={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          alignItems: 'center',
-                          pt: 4,
-                          pb: 2,
-                        }}
-                      >
-                        <Avatar
-                          src={professional.avatar}
+                        <Box 
                           sx={{ 
-                            width: 80, 
-                            height: 80, 
-                            mb: 2,
-                            bgcolor: 'primary.main',
+                            position: 'absolute', 
+                            top: 10, 
+                            right: 10,
+                            zIndex: 1,
                           }}
                         >
-                          {getInitials(professional.name)}
-                        </Avatar>
-                        <Typography variant="h6" align="center">
-                          {professional.name}
-                        </Typography>
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary" 
-                          align="center"
-                          sx={{
-                            bgcolor: 'primary.light',
-                            color: 'white',
-                            px: 2,
-                            py: 0.5,
-                            borderRadius: 1,
-                            mt: 1,
-                          }}
-                        >
-                          {professional.specialization}
-                        </Typography>
-                      </Box>
-                      <CardContent sx={{ pt: 0, flexGrow: 1 }}>
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Email:
-                          </Typography>
-                          <Typography variant="body2" gutterBottom>
-                            {professional.email}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Telefone:
-                          </Typography>
-                          <Typography variant="body2">
-                            {professional.phone}
-                          </Typography>
+                          <Chip
+                            label={professional.status === 'active' ? 'Ativo' : 'Inativo'}
+                            color={professional.status === 'active' ? 'success' : 'default'}
+                            size="small"
+                          />
                         </Box>
-                      </CardContent>
-                      <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
-                        <Button 
-                          size="small" 
-                          startIcon={<CalendarIcon />}
-                          variant="outlined"
+                        <Box 
+                          sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center',
+                            pt: 4,
+                            pb: 2,
+                          }}
                         >
-                          Agenda
-                        </Button>
-                        <Box>
-                          <IconButton
+                          <Badge
+                            badgeContent={professionalCitiesList.length}
                             color="primary"
-                            size="small"
-                            onClick={() => handleOpenDialog(professional)}
+                            overlap="circular"
+                            anchorOrigin={{
+                              vertical: 'bottom',
+                              horizontal: 'right',
+                            }}
                           >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            color="error"
-                            size="small"
-                            onClick={() => handleOpenDeleteDialog(professional)}
+                            <Avatar
+                              src={professional.avatar}
+                              sx={{ 
+                                width: 80, 
+                                height: 80, 
+                                mb: 2,
+                                bgcolor: 'primary.main',
+                              }}
+                            >
+                              {getInitials(professional.name)}
+                            </Avatar>
+                          </Badge>
+                          <Typography variant="h6" align="center">
+                            {professional.name}
+                          </Typography>
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary" 
+                            align="center"
+                            sx={{
+                              bgcolor: 'primary.light',
+                              color: 'white',
+                              px: 2,
+                              py: 0.5,
+                              borderRadius: 1,
+                              mt: 1,
+                            }}
                           >
-                            <DeleteIcon />
-                          </IconButton>
+                            {professional.specialization}
+                          </Typography>
                         </Box>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                ))}
+                        <CardContent sx={{ pt: 0, flexGrow: 1 }}>
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Email:
+                            </Typography>
+                            <Typography variant="body2" gutterBottom>
+                              {professional.email}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Telefone:
+                            </Typography>
+                            <Typography variant="body2" gutterBottom>
+                              {professional.phone}
+                            </Typography>
+                            
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                              Cidades de atendimento:
+                            </Typography>
+                            {professionalCitiesList.length > 0 ? (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                {professionalCitiesList.map((city) => (
+                                  <Chip
+                                    key={city.id}
+                                    label={`${city.name} - ${city.state}`}
+                                    size="small"
+                                    icon={<LocationCityIcon fontSize="small" />}
+                                    sx={{ mb: 0.5 }}
+                                  />
+                                ))}
+                              </Box>
+                            ) : (
+                              <Typography variant="body2" color="error">
+                                Nenhuma cidade atribuída
+                              </Typography>
+                            )}
+                          </Box>
+                        </CardContent>
+                        <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+                          <Button 
+                            size="small" 
+                            startIcon={<MapIcon />}
+                            variant="outlined"
+                            onClick={() => handleOpenCitiesDialog(professional)}
+                          >
+                            Cidades
+                          </Button>
+                          <Box>
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              onClick={() => handleOpenDialog(professional)}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton
+                              color="error"
+                              size="small"
+                              onClick={() => handleOpenDeleteDialog(professional)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  );
+                })}
               {filteredProfessionals.length === 0 && (
                 <Grid item xs={12}>
                   <Box sx={{ py: 3, textAlign: 'center' }}>
@@ -656,6 +831,62 @@ const Professionals = () => {
           <Button onClick={handleCloseDeleteDialog}>Cancelar</Button>
           <Button onClick={handleDeleteProfessional} color="error">
             Excluir
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Manage Cities Dialog */}
+      <Dialog 
+        open={openCitiesDialog} 
+        onClose={handleCloseCitiesDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Gerenciar Cidades de Atendimento
+        </DialogTitle>
+        <DialogContent dividers>
+          {currentProfessional && (
+            <>
+              <Typography variant="subtitle1" gutterBottom>
+                Profissional: <strong>{currentProfessional.name}</strong>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Selecione as cidades onde este profissional realiza atendimentos.
+              </Typography>
+              
+              <FormGroup>
+                {activeCities.map((city) => (
+                  <FormControlLabel
+                    key={city.id}
+                    control={
+                      <Checkbox
+                        checked={selectedCities.includes(city.id)}
+                        onChange={() => handleCitySelectionChange(city.id)}
+                        color="primary"
+                      />
+                    }
+                    label={`${city.name} - ${city.state}`}
+                  />
+                ))}
+              </FormGroup>
+              
+              {activeCities.length === 0 && (
+                <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+                  Não há cidades ativas disponíveis. Adicione cidades no menu de configurações.
+                </Typography>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCitiesDialog}>Cancelar</Button>
+          <Button
+            onClick={handleSaveProfessionalCities}
+            variant="contained"
+            disabled={activeCities.length === 0}
+          >
+            Salvar
           </Button>
         </DialogActions>
       </Dialog>
