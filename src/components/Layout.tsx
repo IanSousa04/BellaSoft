@@ -20,6 +20,7 @@ import {
   useTheme as useMuiTheme,
   Tooltip,
   Collapse,
+  Fab,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -37,11 +38,13 @@ import {
   ExpandLess,
   ExpandMore,
   Settings as SettingsIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { Scissors } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import Footer from './Footer';
 
 const drawerWidth = 240;
 
@@ -64,11 +67,16 @@ const Layout = () => {
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+    if (isMobile) {
+      setMobileOpen(!mobileOpen);
+    } else {
+      setDesktopOpen(!desktopOpen);
+    }
   };
 
   const handleMenuClick = (path: string) => {
@@ -98,13 +106,18 @@ const Layout = () => {
 
   const drawer = (
     <div>
-      <Toolbar sx={{ justifyContent: 'center', py: 1 }}>
+      <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
         <Box display="flex" alignItems="center" gap={1}>
           <Scissors size={28} color={muiTheme.palette.primary.main} />
           <Typography variant="h6" component="div" fontWeight="bold" color="primary">
             BellaSoft
           </Typography>
         </Box>
+        {isMobile && (
+          <IconButton onClick={handleDrawerToggle} edge="end">
+            <CloseIcon />
+          </IconButton>
+        )}
       </Toolbar>
       <Divider />
       <List>
@@ -168,25 +181,29 @@ const Layout = () => {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', height: '100vh' }}>
       <AppBar
         position="fixed"
         sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
+          width: { md: desktopOpen ? `calc(100% - ${drawerWidth}px)` : '100%' },
+          ml: { md: desktopOpen ? `${drawerWidth}px` : 0 },
           boxShadow: 'none',
           borderBottom: `1px solid ${muiTheme.palette.divider}`,
           backgroundColor: muiTheme.palette.background.paper,
           color: muiTheme.palette.text.primary,
+          transition: muiTheme.transitions.create(['margin', 'width'], {
+            easing: muiTheme.transitions.easing.sharp,
+            duration: muiTheme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         <Toolbar>
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label="toggle drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: 'none' } }}
+            sx={{ mr: 2 }}
           >
             <MenuIcon />
           </IconButton>
@@ -226,7 +243,15 @@ const Layout = () => {
       </AppBar>
       <Box
         component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
+        sx={{ 
+          // width: 0, 
+          // width: { md: desktopOpen ? drawerWidth : 0 }, 
+          flexShrink: { md: 0 },
+          transition: muiTheme.transitions.create('width', {
+            easing: muiTheme.transitions.easing.sharp,
+            duration: muiTheme.transitions.duration.enteringScreen,
+          }),
+        }}
       >
         <Drawer
           variant="temporary"
@@ -243,12 +268,19 @@ const Layout = () => {
           {drawer}
         </Drawer>
         <Drawer
-          variant="permanent"
+          variant="persistent"
           sx={{
             display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerWidth,
+              transition: muiTheme.transitions.create('width', {
+                easing: muiTheme.transitions.easing.sharp,
+                duration: muiTheme.transitions.duration.enteringScreen,
+              }),
+            },
           }}
-          open
+          open={desktopOpen}
         >
           {drawer}
         </Drawer>
@@ -258,12 +290,26 @@ const Layout = () => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          minHeight: '100vh',
+          width: { 
+            xs: '100%',
+            md: desktopOpen ? `calc(100% - ${drawerWidth}px)` : '100%' 
+          },
+          ml: { md: desktopOpen ? `${drawerWidth}px` : 0 },
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          overflow: 'auto',
+          transition: muiTheme.transitions.create(['margin', 'width'], {
+            easing: muiTheme.transitions.easing.sharp,
+            duration: muiTheme.transitions.duration.enteringScreen,
+          }),
         }}
       >
         <Toolbar />
-        <Outlet />
+        <Box sx={{ flexGrow: 1, mb: 4 }}>
+          <Outlet />
+        </Box>
+        <Footer />
       </Box>
       <Menu
         id="menu-appbar"

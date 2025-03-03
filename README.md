@@ -1,2 +1,1 @@
-# BellaSoft
-Sistema de Gestão para Clínicas de Estética
+https://bolt.new/~/github.com/IanSousa04/BellaSoft
