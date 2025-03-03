@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -20,6 +20,7 @@ import {
   useTheme,
   SelectChangeEvent,
   InputAdornment,
+  Alert,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -33,13 +34,22 @@ import {
   Event as EventIcon,
   FilterList as FilterListIcon,
   Search as SearchIcon,
+  LocationCity as LocationCityIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { format, addDays, isSameDay, parseISO, setHours, setMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { mockAppointments, mockClients, mockProfessionals, mockServices } from '../data/mockData';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { 
+  mockAppointments, 
+  mockClients, 
+  mockProfessionals, 
+  mockServices, 
+  mockCities,
+  mockProfessionalCities
+} from '../data/mockData';
 
-interface Appointment {
+export interface Appointment {
   id: string;
   clientId: string;
   clientName: string;
@@ -50,37 +60,30 @@ interface Appointment {
   date: string;
   status: 'confirmed' | 'pending' | 'cancelled';
   notes: string;
+  cityId: string;
+  cityName: string;
 }
 
 interface TimeSlot {
   time: string;
   hour: number;
   minute: number;
+  id: string;
 }
 
 const Schedule = () => {
   const theme = useTheme();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [appointments, setAppointments] = useState<Appointment[]>([
-    {
-        id: '1',
-        clientId: '1',
-        clientName: 'Ana Silva',
-        professionalId: '1',
-        professionalName: 'Dra. Sofia Cardoso',
-        serviceId: '1',
-        serviceName: 'Limpeza de Pele Profunda',
-        date: '2025-05-15T10:00:00',
-        status: 'confirmed',
-        notes: 'Cliente com pele sensível',
-      }
-  ]);
+  const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
   const [filteredProfessionals, setFilteredProfessionals] = useState(mockProfessionals.filter(p => p.status === 'active'));
   const [openDialog, setOpenDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
+  const [cityFilter, setCityFilter] = useState<string>('all');
+  const [availableCities, setAvailableCities] = useState<typeof mockCities>([]);
+  const [dragError, setDragError] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -91,22 +94,54 @@ const Schedule = () => {
     time: '',
     status: 'confirmed',
     notes: '',
+    cityId: '',
   });
 
   // Generate time slots from 8:00 to 20:00 with 30-minute intervals
-  const timeSlots: TimeSlot[] = [];
-  for (let hour = 8; hour < 20; hour++) {
-    timeSlots.push({ time: `${hour}:00`, hour, minute: 0 });
-    timeSlots.push({ time: `${hour}:30`, hour, minute: 30 });
-  }
+  const generateTimeSlots = (): TimeSlot[] => {
+    const slots: TimeSlot[] = [];
+    for (let hour = 8; hour < 20; hour++) {
+      slots.push({ time: `${hour}:00`, hour, minute: 0, id: `time-${hour}-0` });
+      slots.push({ time: `${hour}:30`, hour, minute: 30, id: `time-${hour}-30` });
+    }
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
+
+  useEffect(() => {
+    // Update available cities based on professional filter
+    if (professionalFilter === 'all') {
+      setAvailableCities(mockCities.filter(city => city.active));
+    } else {
+      const professionalCityIds = mockProfessionalCities
+        .filter(pc => pc.professionalId === professionalFilter)
+        .map(pc => pc.cityId);
+      
+      setAvailableCities(
+        mockCities.filter(city => city.active && professionalCityIds.includes(city.id))
+      );
+    }
+
+    // Reset city filter if the selected city is no longer available
+    if (cityFilter !== 'all' && !availableCities.some(city => city.id === cityFilter)) {
+      setCityFilter('all');
+    }
+  }, [professionalFilter]);
 
   // Filter appointments for the selected date
-  const getAppointmentsForDate = (date: Date, professionalId?: string) => {
+  const getAppointmentsForDate = (date: Date, professionalId?: string, cityId?: string) => {
     return appointments.filter((appointment) => {
       const appointmentDate = parseISO(appointment.date);
       const sameDay = isSameDay(appointmentDate, date);
-      const matchesProfessional = professionalId ? appointment.professionalId === professionalId : true;
-      return sameDay && matchesProfessional;
+      const matchesProfessional = professionalId && professionalId !== 'all' 
+        ? appointment.professionalId === professionalId 
+        : true;
+      const matchesCity = cityId && cityId !== 'all'
+        ? appointment.cityId === cityId
+        : true;
+      
+      return sameDay && matchesProfessional && matchesCity;
     });
   };
 
@@ -141,6 +176,7 @@ const Schedule = () => {
         time: timeString,
         status: appointment.status,
         notes: appointment.notes,
+        cityId: appointment.cityId,
       });
     } else {
       // Create new appointment
@@ -153,6 +189,7 @@ const Schedule = () => {
         time: initialTime || '10:00',
         status: 'confirmed',
         notes: '',
+        cityId: '',
       });
     }
     setOpenDialog(true);
@@ -181,10 +218,36 @@ const Schedule = () => {
 
   const handleSelectChange = (e: SelectChangeEvent<string>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    
+    if (name === 'professionalId') {
+      // When professional changes, update available cities
+      const professionalCityIds = mockProfessionalCities
+        .filter(pc => pc.professionalId === value)
+        .map(pc => pc.cityId);
+      
+      const availableCitiesForProfessional = mockCities
+        .filter(city => city.active && professionalCityIds.includes(city.id));
+      
+      // Set the first available city as default
+      if (availableCitiesForProfessional.length > 0) {
+        setFormData({
+          ...formData,
+          [name]: value,
+          cityId: availableCitiesForProfessional[0].id,
+        });
+      } else {
+        setFormData({
+          ...formData,
+          [name]: value,
+          cityId: '',
+        });
+      }
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleSaveAppointment = () => {
@@ -192,6 +255,9 @@ const Schedule = () => {
     const [hours, minutes] = formData.time.split(':').map(Number);
     const appointmentDate = new Date(formData.date);
     const combinedDate = setMinutes(setHours(appointmentDate, hours), minutes);
+    
+    // Get city name
+    const cityName = mockCities.find(city => city.id === formData.cityId)?.name || '';
     
     if (currentAppointment) {
       // Update existing appointment
@@ -208,6 +274,8 @@ const Schedule = () => {
               date: combinedDate.toISOString(),
               status: formData.status as 'confirmed' | 'pending' | 'cancelled',
               notes: formData.notes,
+              cityId: formData.cityId,
+              cityName: cityName,
             }
           : appointment
       );
@@ -225,6 +293,8 @@ const Schedule = () => {
         date: combinedDate.toISOString(),
         status: formData.status as 'confirmed' | 'pending' | 'cancelled',
         notes: formData.notes,
+        cityId: formData.cityId,
+        cityName: cityName,
       };
       setAppointments([...appointments, newAppointment]);
     }
@@ -257,9 +327,13 @@ const Schedule = () => {
     }
   };
 
+  const handleCityFilterChange = (event: SelectChangeEvent<string>) => {
+    setCityFilter(event.target.value);
+  };
+
   // Get appointment for a specific time slot and professional
   const getAppointmentForTimeSlot = (timeSlot: TimeSlot, professionalId: string) => {
-    const appointmentsForDate = getAppointmentsForDate(selectedDate, professionalId);
+    const appointmentsForDate = getAppointmentsForDate(selectedDate, professionalId, cityFilter !== 'all' ? cityFilter : undefined);
     return appointmentsForDate.find((appointment) => {
       const appointmentDate = parseISO(appointment.date);
       return (
@@ -291,7 +365,11 @@ const Schedule = () => {
 
   // Check if a time slot is occupied by a longer appointment
   const isTimeSlotOccupied = (timeSlot: TimeSlot, professionalId: string) => {
-    const appointmentsForDate = getAppointmentsForDate(selectedDate, professionalId);
+    const appointmentsForDate = getAppointmentsForDate(
+      selectedDate, 
+      professionalId, 
+      cityFilter !== 'all' ? cityFilter : undefined
+    );
     
     return appointmentsForDate.some((appointment) => {
       const appointmentDate = parseISO(appointment.date);
@@ -313,6 +391,67 @@ const Schedule = () => {
     });
   };
 
+  // Handle drag end
+  const handleDragEnd = (result: DropResult) => {
+    setDragError(null);
+    
+    const { destination, source, draggableId } = result;
+    
+    // If there's no destination or the item is dropped in the same place
+    if (!destination || 
+        (destination.droppableId === source.droppableId && 
+         destination.index === source.index)) {
+      return;
+    }
+    
+    // Get the appointment being dragged
+    const appointment = appointments.find(app => app.id === draggableId);
+    if (!appointment) return;
+    
+    // Parse the destination droppable ID to get professional and time slot
+    const [destProfId, destTimeSlotId] = destination.droppableId.split('|');
+    const destTimeSlot = timeSlots.find(slot => slot.id === destTimeSlotId);
+    
+    if (!destTimeSlot) return;
+    
+    // Check if the professional serves in the city of the appointment
+    const professionalCities = mockProfessionalCities
+      .filter(pc => pc.professionalId === destProfId)
+      .map(pc => pc.cityId);
+    
+    if (!professionalCities.includes(appointment.cityId)) {
+      setDragError(`O profissional não atende na cidade ${appointment.cityName}`);
+      return;
+    }
+    
+    // Check if the destination time slot is already occupied
+    const isOccupied = getAppointmentForTimeSlot(destTimeSlot, destProfId);
+    if (isOccupied) {
+      setDragError('Este horário já está ocupado');
+      return;
+    }
+    
+    // Update the appointment with the new time and professional
+    const appointmentDate = parseISO(appointment.date);
+    const newDate = new Date(appointmentDate);
+    newDate.setHours(destTimeSlot.hour);
+    newDate.setMinutes(destTimeSlot.minute);
+    
+    const updatedAppointments = appointments.map(app => {
+      if (app.id === draggableId) {
+        return {
+          ...app,
+          date: newDate.toISOString(),
+          professionalId: destProfId,
+          professionalName: mockProfessionals.find(p => p.id === destProfId)?.name || app.professionalName
+        };
+      }
+      return app;
+    });
+    
+    setAppointments(updatedAppointments);
+  };
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
@@ -327,6 +466,12 @@ const Schedule = () => {
           Novo Agendamento
         </Button>
       </Box>
+
+      {dragError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDragError(null)}>
+          {dragError}
+        </Alert>
+      )}
 
       <Paper elevation={0} sx={{ p: 2, mb: 4, borderRadius: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3, alignItems: 'center' }}>
@@ -385,6 +530,29 @@ const Schedule = () => {
                   ))}
               </Select>
             </FormControl>
+            
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="city-filter-label">Cidade</InputLabel>
+              <Select
+                labelId="city-filter-label"
+                id="city-filter"
+                value={cityFilter}
+                label="Cidade"
+                onChange={handleCityFilterChange}
+                startAdornment={
+                  <InputAdornment position="start">
+                    <LocationCityIcon fontSize="small" />
+                  </InputAdornment>
+                }
+              >
+                <MenuItem value="all">Todas as cidades</MenuItem>
+                {availableCities.map((city) => (
+                  <MenuItem key={city.id} value={city.id}>
+                    {city.name} - {city.state}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </Box>
 
@@ -401,7 +569,7 @@ const Schedule = () => {
               </Box>
               {timeSlots.map((slot) => (
                 <Box
-                  key={slot.time}
+                  key={slot.id}
                   sx={{
                     height: 80,
                     display: 'flex',
@@ -416,125 +584,170 @@ const Schedule = () => {
               ))}
             </Box>
 
-            {/* Professional columns */}
-            {filteredProfessionals.map((professional) => (
-              <Box key={professional.id} sx={{ flex: 1, minWidth: 250 }}>
-                <Box
-                  sx={{
-                    height: 60,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderBottom: `1px solid ${theme.palette.divider}`,
-                    px: 1,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Avatar
-                      src={professional.avatar}
-                      sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}
-                    >
-                      {professional.name.charAt(0)}
-                    </Avatar>
-                    <Typography variant="subtitle1" fontWeight="medium" noWrap>
-                      {professional.name}
-                    </Typography>
-                  </Box>
-                </Box>
-                {timeSlots.map((slot) => {
-                  const appointment = getAppointmentForTimeSlot(slot, professional.id);
-                  const isOccupied = isTimeSlotOccupied(slot, professional.id);
-                  
-                  return (
-                    <Box
-                      key={`${professional.id}-${slot.time}`}
-                      sx={{
-                        height: 80,
-                        borderBottom: `1px solid ${theme.palette.divider}`,
-                        borderLeft: `1px solid ${theme.palette.divider}`,
-                        position: 'relative',
-                        backgroundColor: isOccupied ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
-                      }}
-                    >
-                      {appointment ? (
-                        <Paper
-                          elevation={0}
-                          sx={{
-                            position: 'absolute',
-                            top: 4,
-                            left: 4,
-                            right: 4,
-                            bottom: 4,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            p: 1,
-                            borderLeft: `4px solid ${getStatusColor(appointment.status)}`,
-                            backgroundColor: `${getStatusColor(appointment.status)}15`,
-                            '&:hover': {
-                              boxShadow: theme.shadows[2],
-                            },
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <Typography variant="body2" fontWeight="medium" noWrap>
-                              {appointment.clientName}
-                            </Typography>
-                            <Box>
-                              <Tooltip title="Editar">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleOpenDialog(appointment)}
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Excluir">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleOpenDeleteDialog(appointment)}
-                                >
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          </Box>
-                          <Typography variant="caption" color="text.secondary" noWrap>
-                            {appointment.serviceName}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 'auto' }}>
-                            <AccessTimeIcon fontSize="small" sx={{ fontSize: 14, mr: 0.5, color: theme.palette.text.secondary }} />
-                            <Typography variant="caption" color="text.secondary">
-                              {format(parseISO(appointment.date), 'HH:mm')}
-                            </Typography>
-                          </Box>
-                        </Paper>
-                      ) : (
-                        !isOccupied && (
-                          <Tooltip title="Adicionar agendamento">
-                            <IconButton
-                              size="small"
-                              sx={{
-                                position: 'absolute',
-                                top: '50%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                opacity: 0.3,
-                                '&:hover': {
-                                  opacity: 1,
-                                },
-                              }}
-                              onClick={() => handleOpenDialog(undefined, slot.time, professional.id)}
-                            >
-                              <AddIcon />
-                            </IconButton>
-                          </Tooltip>
-                        )
-                      )}
+            <DragDropContext onDragEnd={handleDragEnd}>
+              {/* Professional columns */}
+              {filteredProfessionals.map((professional) => (
+                <Box key={professional.id} sx={{ flex: 1, minWidth: 250 }}>
+                  <Box
+                    sx={{
+                      height: 60,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderBottom: `1px solid ${theme.palette.divider}`,
+                      px: 1,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Avatar
+                        src={professional.avatar}
+                        sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}
+                      >
+                        {professional.name.charAt(0)}
+                      </Avatar>
+                      <Typography variant="subtitle1" fontWeight="medium" noWrap>
+                        {professional.name}
+                      </Typography>
                     </Box>
-                  );
-                })}
-              </Box>
-            ))}
+                  </Box>
+                  
+                  {timeSlots.map((slot) => {
+                    const appointment = getAppointmentForTimeSlot(slot, professional.id);
+                    const isOccupied = isTimeSlotOccupied(slot, professional.id);
+                    
+                    return (
+                      <Droppable 
+                        droppableId={`${professional.id}|${slot.id}`} 
+                        key={`${professional.id}-${slot.id}`}
+                        isDropDisabled={isOccupied}
+                      >
+                        {(provided, snapshot) => (
+                          <Box
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            sx={{
+                              height: 80,
+                              borderBottom: `1px solid ${theme.palette.divider}`,
+                              borderLeft: `1px solid ${theme.palette.divider}`,
+                              position: 'relative',
+                              backgroundColor: snapshot.isDraggingOver 
+                                ? 'rgba(156, 39, 176, 0.08)' 
+                                : isOccupied 
+                                  ? 'rgba(0, 0, 0, 0.04)' 
+                                  : 'transparent',
+                            }}
+                          >
+                            {appointment ? (
+                              <Draggable 
+                                draggableId={appointment.id} 
+                                index={0}
+                                key={appointment.id}
+                              >
+                                {(provided, snapshot) => (
+                                  <Paper
+                                    elevation={snapshot.isDragging ? 3 : 0}
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 4,
+                                      left: 4,
+                                      right: 4,
+                                      bottom: 4,
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      p: 1,
+                                      borderLeft: `4px solid ${getStatusColor(appointment.status)}`,
+                                      backgroundColor: snapshot.isDragging 
+                                        ? `${getStatusColor(appointment.status)}25` 
+                                        : `${getStatusColor(appointment.status)}15`,
+                                      '&:hover': {
+                                        boxShadow: theme.shadows[2],
+                                      },
+                                      cursor: 'grab',
+                                    }}
+                                  >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                      <Typography variant="body2" fontWeight="medium" noWrap>
+                                        {appointment.clientName}
+                                      </Typography>
+                                      <Box>
+                                        <Tooltip title="Editar">
+                                          <IconButton
+                                            size="small"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleOpenDialog(appointment);
+                                            }}
+                                          >
+                                            <EditIcon fontSize="small" />
+                                          </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Excluir">
+                                          <IconButton
+                                            size="small"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleOpenDeleteDialog(appointment);
+                                            }}
+                                          >
+                                            <DeleteIcon fontSize="small" />
+                                          </IconButton>
+                                        </Tooltip>
+                                      </Box>
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary" noWrap>
+                                      {appointment.serviceName}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 'auto', gap: 1 }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <AccessTimeIcon fontSize="small" sx={{ fontSize: 14, mr: 0.5, color: theme.palette.text.secondary }} />
+                                        <Typography variant="caption" color="text.secondary">
+                                          {format(parseISO(appointment.date), 'HH:mm')}
+                                        </Typography>
+                                      </Box>
+                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <LocationCityIcon fontSize="small" sx={{ fontSize: 14, mr: 0.5, color: theme.palette.text.secondary }} />
+                                        <Typography variant="caption" color="text.secondary">
+                                          {appointment.cityName}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+                                  </Paper>
+                                )}
+                              </Draggable>
+                            ) : (
+                              !isOccupied && (
+                                <Tooltip title="Adicionar agendamento">
+                                  <IconButton
+                                    size="small"
+                                    sx={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      left: '50%',
+                                      transform: 'translate(-50%, -50%)',
+                                      opacity: 0.3,
+                                      '&:hover': {
+                                        opacity: 1,
+                                      },
+                                    }}
+                                    onClick={() => handleOpenDialog(undefined, slot.time, professional.id)}
+                                  >
+                                    <AddIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )
+                            )}
+                            {provided.placeholder}
+                          </Box>
+                        )}
+                      </Droppable>
+                    );
+                  })}
+                </Box>
+              ))}
+            </DragDropContext>
           </Box>
         </Box>
       </Paper>
@@ -595,6 +808,35 @@ const Schedule = () => {
             </FormControl>
 
             <FormControl fullWidth margin="normal">
+              <InputLabel id="city-label">Cidade</InputLabel>
+              <Select
+                labelId="city-label"
+                id="cityId"
+                name="cityId"
+                value={formData.cityId}
+                label="Cidade"
+                onChange={handleSelectChange}
+                startAdornment={
+                  <InputAdornment position="start">
+                    <LocationCityIcon fontSize="small" />
+                  </InputAdornment>
+                }
+                disabled={!formData.professionalId}
+              >
+                {formData.professionalId && mockProfessionalCities
+                  .filter(pc => pc.professionalId === formData.professionalId)
+                  .map(pc => {
+                    const city = mockCities.find(c => c.id === pc.cityId && c.active);
+                    return city ? (
+                      <MenuItem key={city.id} value={city.id}>
+                        {city.name} - {city.state}
+                      </MenuItem>
+                    ) : null;
+                  })}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth margin="normal">
               <InputLabel id="service-label">Serviço</InputLabel>
               <Select
                 labelId="service-label"
@@ -647,7 +889,7 @@ const Schedule = () => {
                     }
                   >
                     {timeSlots.map((slot) => (
-                      <MenuItem key={slot.time} value={slot.time}>
+                      <MenuItem key={slot.id} value={slot.time}>
                         {slot.time}
                       </MenuItem>
                     ))}
@@ -698,7 +940,8 @@ const Schedule = () => {
               !formData.clientId ||
               !formData.professionalId ||
               !formData.serviceId ||
-              !formData.time
+              !formData.time ||
+              !formData.cityId
             }
           >
             Salvar

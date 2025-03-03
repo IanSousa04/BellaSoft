@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   useTheme as useMuiTheme,
   Tooltip,
+  Collapse,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -32,6 +33,10 @@ import {
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
   Logout as LogoutIcon,
+  LocationCity as LocationCityIcon,
+  ExpandLess,
+  ExpandMore,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { Scissors } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -60,6 +65,7 @@ const Layout = () => {
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -84,6 +90,10 @@ const Layout = () => {
     handleProfileMenuClose();
     logout();
     navigate('/login');
+  };
+
+  const handleSettingsToggle = () => {
+    setSettingsOpen(!settingsOpen);
   };
 
   const drawer = (
@@ -124,6 +134,35 @@ const Layout = () => {
             </ListItemButton>
           </ListItem>
         ))}
+
+        {/* Settings Section */}
+        <ListItem disablePadding>
+          <ListItemButton onClick={handleSettingsToggle}>
+            <ListItemIcon>
+              <SettingsIcon />
+            </ListItemIcon>
+            <ListItemText primary="Configurações" />
+            {settingsOpen ? <ExpandLess /> : <ExpandMore />}
+          </ListItemButton>
+        </ListItem>
+        <Collapse in={settingsOpen} timeout="auto" unmountOnExit>
+          <List component="div" disablePadding>
+            <ListItemButton
+              sx={{ pl: 4 }}
+              selected={location.pathname === '/cidades'}
+              onClick={() => handleMenuClick('/cidades')}
+            >
+              <ListItemIcon
+                sx={{
+                  color: location.pathname === '/cidades' ? muiTheme.palette.primary.main : 'inherit',
+                }}
+              >
+                <LocationCityIcon />
+              </ListItemIcon>
+              <ListItemText primary="Cidades" />
+            </ListItemButton>
+          </List>
+        </Collapse>
       </List>
     </div>
   );

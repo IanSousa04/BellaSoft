@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -43,9 +43,9 @@ import {
   ViewList as ViewListIcon,
   ViewModule as ViewModuleIcon,
 } from '@mui/icons-material';
-import { mockProfessionals } from '../data/mockData';
+import { mockCities, mockProfessionalCities, mockProfessionals } from '../data/mockData';
 
-interface Professional {
+export interface Professional {
   id: string;
   name: string;
   email: string;
@@ -55,11 +55,24 @@ interface Professional {
   avatar?: string;
 }
 
+interface ProfessionalCity {
+  professionalId: string;
+  cityId: string;
+}
+
+interface City {
+  id: string;
+  name: string;
+  state: string;
+  active: boolean;
+}
+
 const Professionals = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [professionals, setProfessionals] = useState<Professional[]>(mockProfessionals);
   const [filteredProfessionals, setFilteredProfessionals] = useState<Professional[]>(mockProfessionals);
+  const [professionalCities, setProfessionalCities] = useState<ProfessionalCity[]>(mockProfessionalCities);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -68,6 +81,8 @@ const Professionals = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [cityFilter, setCityFilter] = useState<string>('all');
+  const [openCitiesDialog, setOpenCitiesDialog] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -78,19 +93,35 @@ const Professionals = () => {
     status: 'active',
   });
 
+  // Cities form state
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+
+  // Get active cities
+  const activeCities = mockCities.filter(city => city.active);
+
+  useEffect(() => {
+    filterProfessionals(searchTerm, statusFilter, cityFilter);
+  }, [professionalCities, cityFilter]);
+
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setSearchTerm(value);
-    filterProfessionals(value, statusFilter);
+    filterProfessionals(value, statusFilter, cityFilter);
   };
 
   const handleStatusFilterChange = (event: SelectChangeEvent<string>) => {
     const value = event.target.value as 'all' | 'active' | 'inactive';
     setStatusFilter(value);
-    filterProfessionals(searchTerm, value);
+    filterProfessionals(searchTerm, value, cityFilter);
   };
 
-  const filterProfessionals = (search: string, status: 'all' | 'active' | 'inactive') => {
+  const handleCityFilterChange = (event: SelectChangeEvent<string>) => {
+    const value = event.target.value;
+    setCityFilter(value);
+    filterProfessionals(searchTerm, statusFilter, value);
+  };
+
+  const filterProfessionals = (search: string, status: 'all' | 'active' | 'inactive', cityId: string) => {
     let filtered = professionals;
     
     // Apply search filter
@@ -106,6 +137,17 @@ const Professionals = () => {
     // Apply status filter
     if (status !== 'all') {
       filtered = filtered.filter((professional) => professional.status === status);
+    }
+    
+    // Apply city filter
+    if (cityId !== 'all') {
+      const professionalIdsInCity = professionalCities
+        .filter(pc => pc.cityId === cityId)
+        .map(pc => pc.professionalId);
+      
+      filtered = filtered.filter(professional => 
+        professionalIdsInCity.includes(professional.id)
+      );
     }
     
     setFilteredProfessionals(filtered);
@@ -183,7 +225,7 @@ const Professionals = () => {
       );
       setProfessionals(updatedProfessionals);
       setFilteredProfessionals(updatedProfessionals);
-      filterProfessionals(searchTerm, statusFilter);
+      filterProfessionals(searchTerm, statusFilter, cityFilter);
     } else {
       // Add new professional
       const newProfessional: Professional = {
@@ -196,7 +238,7 @@ const Professionals = () => {
       };
       const updatedProfessionals = [...professionals, newProfessional];
       setProfessionals(updatedProfessionals);
-      filterProfessionals(searchTerm, statusFilter);
+      filterProfessionals(searchTerm, statusFilter, cityFilter);
     }
     handleCloseDialog();
   };

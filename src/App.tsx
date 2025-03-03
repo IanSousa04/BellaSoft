@@ -22,6 +22,7 @@ import Layout from './components/Layout';
 
 // Hooks
 import { useAuth } from './hooks/useAuth';
+import Cidades from './pages/Cidades';
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -42,6 +43,7 @@ function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/cidades" element={<Cidades />} />
           </Route>
         </Route>
         

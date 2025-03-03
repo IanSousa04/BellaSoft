@@ -1,5 +1,76 @@
 // Mock data for the application
 
+import { Professional } from "../pages/Professionals";
+import { Appointment } from "../pages/Schedule";
+
+// Cities
+export const mockCities = [
+  {
+    id: '1',
+    name: 'São Paulo',
+    state: 'SP',
+    active: true,
+  },
+  {
+    id: '2',
+    name: 'Rio de Janeiro',
+    state: 'RJ',
+    active: true,
+  },
+  {
+    id: '3',
+    name: 'Belo Horizonte',
+    state: 'MG',
+    active: true,
+  },
+  {
+    id: '4',
+    name: 'Curitiba',
+    state: 'PR',
+    active: true,
+  },
+  {
+    id: '5',
+    name: 'Porto Alegre',
+    state: 'RS',
+    active: true,
+  },
+  {
+    id: '6',
+    name: 'Brasília',
+    state: 'DF',
+    active: false,
+  },
+  {
+    id: '7',
+    name: 'Salvador',
+    state: 'BA',
+    active: false,
+  },
+  {
+    id: '8',
+    name: 'Recife',
+    state: 'PE',
+    active: false,
+  },
+];
+
+// Professional Cities (which cities each professional serves)
+export const mockProfessionalCities = [
+  { professionalId: '1', cityId: '1' }, // Dra. Sofia Cardoso - São Paulo
+  { professionalId: '1', cityId: '2' }, // Dra. Sofia Cardoso - Rio de Janeiro
+  { professionalId: '2', cityId: '1' }, // Dr. Miguel Ribeiro - São Paulo
+  { professionalId: '2', cityId: '3' }, // Dr. Miguel Ribeiro - Belo Horizonte
+  { professionalId: '3', cityId: '1' }, // Dra. Isabela Alves - São Paulo
+  { professionalId: '3', cityId: '4' }, // Dra. Isabela Alves - Curitiba
+  { professionalId: '5', cityId: '1' }, // Dra. Luiza Ferreira - São Paulo
+  { professionalId: '5', cityId: '5' }, // Dra. Luiza Ferreira - Porto Alegre
+  { professionalId: '6', cityId: '2' }, // Dr. Rafael Costa - Rio de Janeiro
+  { professionalId: '6', cityId: '3' }, // Dr. Rafael Costa - Belo Horizonte
+  { professionalId: '7', cityId: '1' }, // Dra. Carolina Lima - São Paulo
+  { professionalId: '7', cityId: '5' }, // Dra. Carolina Lima - Porto Alegre
+];
+
 // Clients
 export const mockClients = [
   {
@@ -101,7 +172,7 @@ export const mockClients = [
 ];
 
 // Professionals
-export const mockProfessionals = [
+export const mockProfessionals: Professional[] = [
   {
     id: '1',
     name: 'Dra. Sofia Cardoso',
@@ -321,7 +392,7 @@ export const mockProducts = [
 ];
 
 // Appointments
-export const mockAppointments = [
+export const mockAppointments: Appointment[] = [
   {
     id: '1',
     clientId: '1',
@@ -333,6 +404,8 @@ export const mockAppointments = [
     date: '2025-05-15T10:00:00',
     status: 'confirmed',
     notes: 'Cliente com pele sensível',
+    cityId: '1',
+    cityName: 'São Paulo',
   },
   {
     id: '2',
@@ -345,6 +418,8 @@ export const mockAppointments = [
     date: '2025-05-15T11:00:00',
     status: 'confirmed',
     notes: '',
+    cityId: '1',
+    cityName: 'São Paulo',
   },
   {
     id: '3',
@@ -357,6 +432,8 @@ export const mockAppointments = [
     date: '2025-05-15T14:30:00',
     status: 'pending',
     notes: 'Primeira sessão',
+    cityId: '3',
+    cityName: 'Belo Horizonte',
   },
   {
     id: '4',
@@ -369,6 +446,8 @@ export const mockAppointments = [
     date: '2025-05-15T16:00:00',
     status: 'confirmed',
     notes: '',
+    cityId: '5',
+    cityName: 'Porto Alegre',
   },
   {
     id: '5',
@@ -381,6 +460,8 @@ export const mockAppointments = [
     date: '2025-05-16T09:00:00',
     status: 'confirmed',
     notes: 'Paciente com retenção de líquidos',
+    cityId: '2',
+    cityName: 'Rio de Janeiro',
   },
   {
     id: '6',
@@ -393,6 +474,8 @@ export const mockAppointments = [
     date: '2025-05-16T10:30:00',
     status: 'confirmed',
     notes: 'Terceira sessão',
+    cityId: '1',
+    cityName: 'São Paulo',
   },
   {
     id: '7',
@@ -405,6 +488,8 @@ export const mockAppointments = [
     date: '2025-05-16T13:00:00',
     status: 'pending',
     notes: '',
+    cityId: '2',
+    cityName: 'Rio de Janeiro',
   },
   {
     id: '8',
@@ -417,5 +502,21 @@ export const mockAppointments = [
     date: '2025-05-16T15:00:00',
     status: 'confirmed',
     notes: 'Foco em região lombar',
+    cityId: '1',
+    cityName: 'São Paulo',
+  },
+  {
+    id: '9',
+    clientId: '6',
+    clientName: 'Roberto Almeida',
+    professionalId: '4',
+    professionalName: 'Dr. André Santos',
+    serviceId: '2',
+    serviceName: 'Massagem Relaxante',
+    date: '2025-02-03T15:00:00',
+    status: 'confirmed',
+    notes: 'Foco em região lombar',
+    cityId: '1',
+    cityName: 'São Paulo',
   },
 ];
