@@ -47,13 +47,13 @@ export class AuthService {
 
   async signIn(email: string, password: string): Promise<boolean> {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
-      return true;
+      return !!data.user;
     } catch (error) {
       console.error('Error during sign in:', error);
       return false;

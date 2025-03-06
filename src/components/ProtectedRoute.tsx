@@ -4,9 +4,9 @@ import { useAuth } from '../hooks/useAuth';
 import { Box, CircularProgress } from '@mui/material';
 
 const ProtectedRoute = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAutenticado, isCarregando } = useAuth();
 
-  if (loading) {
+  if (isCarregando) {
     return (
       <Box
         display="flex"
@@ -19,7 +19,7 @@ const ProtectedRoute = () => {
     );
   }
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
+  return isAutenticado ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;

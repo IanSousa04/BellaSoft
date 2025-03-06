@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">bellasoft</string>
+    <string name="title_activity_main">BellaSoft</string>
+    <string name="package_name">bellasoft.app</string>
+    <string name="custom_url_scheme">bellasoft.app</string>
+</resources>

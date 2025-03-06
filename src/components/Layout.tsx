@@ -59,7 +59,7 @@ const menuItems = [
 ];
 
 const Layout = () => {
-  const { user, logout } = useAuth();
+  const { usuario,sair} = useAuth();
   const { mode, toggleColorMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -96,7 +96,7 @@ const Layout = () => {
 
   const handleLogout = () => {
     handleProfileMenuClose();
-    logout();
+    sair();
     navigate('/login');
   };
 
@@ -228,7 +228,7 @@ const Layout = () => {
                   height: 40,
                 }}
               >
-                {user?.name.charAt(0)}
+                {usuario?.name.charAt(0)}
               </Avatar>
             </IconButton>
             <Typography
@@ -236,7 +236,7 @@ const Layout = () => {
               component="div"
               sx={{ ml: 1, display: { xs: 'none', sm: 'block' } }}
             >
-              {user?.name}
+              {usuario?.name}
             </Typography>
           </Box>
         </Toolbar>

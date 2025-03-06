@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -19,17 +20,23 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('ian04sousa@gmail.com');
-  const [password, setPassword] = useState('856247k4I@');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [snackOpen, setSnackOpen] = useState(false); // Estado para o Snackbar
+  const [snackOpen, setSnackOpen] = useState(false);
 
-  const { entrar } = useAuth();
+  const { entrar, isAutenticado } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  useEffect(() => {
+    if (isAutenticado) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAutenticado, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,9 +51,7 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const success = await entrar(email, password);
-      if (success) {
-        navigate('/dashboard');
-      } else {
+      if (!success) {
         setError('E-mail ou senha inválidos.');
         setSnackOpen(true);
       }
@@ -166,17 +171,16 @@ const LoginPage = () => {
             </Button>
           </Box>
 
-          <Box sx={{ mt: 3, textAlign: 'center' }}>
+          {/* <Box sx={{ mt: 3, textAlign: 'center' }}>
             <Typography variant="caption" color="text.secondary">
               Credenciais de demonstração:
               <br />
               Email: demo@bellasoft.com | Senha: demo123
             </Typography>
-          </Box>
+          </Box> */}
         </Box>
       </Paper>
 
-      {/* Snackbar para exibir erros */}
       <Snackbar open={snackOpen} autoHideDuration={5000} onClose={handleCloseSnack} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert onClose={handleCloseSnack} severity="error" sx={{ width: '100%' }}>
           {error}

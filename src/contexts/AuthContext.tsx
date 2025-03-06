@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [isCarregando, setIsCarregando] = useState(true);
+  const [isAutenticado, setIsAutenticado] = useState(false);
   const authService = new AuthService();
 
   useEffect(() => {
@@ -49,22 +50,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const empresa = await authService.getCurrentTenant();
       setUsuario(usuario);
       setEmpresa(empresa);
-      console.log('usuario', usuario);
-      console.log('empresa', empresa);
+      setIsAutenticado(!!usuario);
     } catch (erro) {
       console.error('Erro ao verificar usuário:', erro);
+      setIsAutenticado(false);
     } finally {
       setIsCarregando(false);
     }
   };
 
   const entrar = async (email: string, senha: string) => {
-    const sucesso = await authService.signIn(email, senha);
-console.log('sucesso', sucesso);
-    if (sucesso) {
-      await verificarUsuario();
+    try {
+      const sucesso = await authService.signIn(email, senha);
+      if (sucesso) {
+        await verificarUsuario();
+      }
+      return sucesso;
+    } catch (error) {
+      console.error('Erro ao fazer login:', error);
+      return false;
     }
-    return sucesso;
   };
 
   const cadastrar = async (email: string, senha: string, nome: string, nomeEmpresa: string) => {
@@ -76,9 +81,15 @@ console.log('sucesso', sucesso);
   };
 
   const sair = async () => {
-    await authService.signOut();
-    setUsuario(null);
-    setEmpresa(null);
+    setIsCarregando(true);
+    try {
+      await authService.signOut();
+    } finally {
+      setUsuario(null);
+      setEmpresa(null);
+      setIsAutenticado(false);
+      setIsCarregando(false);
+    }
   };
 
   const convidarUsuario = async (email: string, nome: string, papel: string) => {
@@ -90,7 +101,7 @@ console.log('sucesso', sucesso);
       value={{
         usuario,
         empresa,
-        isAutenticado: !!usuario,
+        isAutenticado,
         isCarregando,
         entrar,
         cadastrar,
