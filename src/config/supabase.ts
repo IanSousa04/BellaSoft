@@ -7,6 +7,12 @@ import { Database } from '../types/supabase';
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
+console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log('SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY);
+
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Variaveis de ambiente não definidas');
