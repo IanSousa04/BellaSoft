@@ -6,9 +6,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ptBR from 'date-fns/locale/pt-BR';
 
 // Pages
-import Login from './pages/Login';
+import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
-
 import Professionals from './pages/Professionals';
 import Services from './pages/Services';
 import Products from './pages/Products';
@@ -26,15 +25,19 @@ import Cidades from './pages/Cidades';
 import ClientesPage from './pages/ClientesPage';
 
 function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAutenticado } = useAuth();
+
+
+  console.log('isAutenticado', isAutenticado);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
       <CssBaseline />
       <Routes>
-        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
-        {/* <Route path="/*" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} /> */}
-        
+        {/* Rota pública para login */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Rotas protegidas */}
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
@@ -47,8 +50,14 @@ function App() {
             <Route path="/cidades" element={<Cidades />} />
           </Route>
         </Route>
+
+        {/* Redirecionamentos raiz */}
+        <Route 
+          path="/" 
+          element={<Navigate to={isAutenticado ? "/dashboard" : "/login"} replace />} 
+        />
         
-        <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
+        {/* Rota para páginas não encontradas */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </LocalizationProvider>

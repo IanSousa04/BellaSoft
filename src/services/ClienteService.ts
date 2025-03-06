@@ -1,10 +1,10 @@
-import { Cliente } from "../entities/Cliente";
-import BaseService from "./BaseService";
+import { Database } from '../types/supabase';
+import { BaseService } from './BaseService';
 
-class ClienteService extends BaseService<Cliente> {
-    constructor() {
-      super('clientes') 
-    }
+type Cliente = Database['public']['Tables']['clients']['Row'];
+
+export class ClienteService extends BaseService<Cliente> {
+  constructor() {
+    super('clients');
+  }
 }
-
-export default ClienteService;

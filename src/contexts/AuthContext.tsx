@@ -1,40 +1,32 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import { AuthService } from '../services/AuthService';
+import type { Database } from '../types/supabase';
 
-// Mock user data
-const MOCK_USER_ADMIN = {
-  id: '1',
-  name: 'Administrador',
-  email: 'admin@bellasoft.com',
-  role: 'admin',
-};
-const MOCK_USER_DEMO = {
-  id: '2',
-  name: 'Demonstração',
-  email: 'demo@bellasoft.com',
-  role: 'demo',
-};
+// Tipos de Usuário e Empresa
+type Usuario = Database['public']['Tables']['users']['Row'];
+type Empresa = Database['public']['Tables']['tenants']['Row'];
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
+// Interface do Contexto de Autenticação
 interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  loading: boolean;
+  usuario: Usuario | null;
+  empresa: Empresa | null;
+  isAutenticado: boolean;
+  isCarregando: boolean;
+  entrar: (email: string, senha: string) => Promise<boolean>;
+  cadastrar: (email: string, senha: string, nome: string, nomeEmpresa: string) => Promise<boolean>;
+  sair: () => Promise<void>;
+  convidarUsuario: (email: string, nome: string, papel: string) => Promise<boolean>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isAuthenticated: false,
-  login: async () => false,
-  logout: () => {},
-  loading: true,
+  usuario: null,
+  empresa: null,
+  isAutenticado: false,
+  isCarregando: true,
+  entrar: async () => false,
+  cadastrar: async () => false,
+  sair: async () => {},
+  convidarUsuario: async () => false,
 });
 
 interface AuthProviderProps {
@@ -42,46 +34,68 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [isCarregando, setIsCarregando] = useState(true);
+  const authService = new AuthService();
 
   useEffect(() => {
-    // Check if user is stored in localStorage
-    const storedUser = localStorage.getItem('bellasoft_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    verificarUsuario();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // In a real app, this would be an API call
-    // For now, we'll just check against our mock data
-    if (email === 'admin@bellasoft.com' && password === 'admin2707') {
-      setUser(MOCK_USER_ADMIN);
-      localStorage.setItem('bellasoft_user', JSON.stringify(MOCK_USER_ADMIN));
-      return true;
-    } else if (email === 'demo@bellasoft.com' && password === 'demo123'){
-      setUser(MOCK_USER_DEMO);
-      localStorage.setItem('bellasoft_user', JSON.stringify(MOCK_USER_DEMO));
-      return true;
+  const verificarUsuario = async () => {
+    try {
+      const usuario = await authService.getCurrentUser();
+      const empresa = await authService.getCurrentTenant();
+      setUsuario(usuario);
+      setEmpresa(empresa);
+      console.log('usuario', usuario);
+      console.log('empresa', empresa);
+    } catch (erro) {
+      console.error('Erro ao verificar usuário:', erro);
+    } finally {
+      setIsCarregando(false);
     }
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('bellasoft_user');
+  const entrar = async (email: string, senha: string) => {
+    const sucesso = await authService.signIn(email, senha);
+console.log('sucesso', sucesso);
+    if (sucesso) {
+      await verificarUsuario();
+    }
+    return sucesso;
+  };
+
+  const cadastrar = async (email: string, senha: string, nome: string, nomeEmpresa: string) => {
+    const sucesso = await authService.signUp(email, senha, nome, nomeEmpresa);
+    if (sucesso) {
+      await verificarUsuario();
+    }
+    return sucesso;
+  };
+
+  const sair = async () => {
+    await authService.signOut();
+    setUsuario(null);
+    setEmpresa(null);
+  };
+
+  const convidarUsuario = async (email: string, nome: string, papel: string) => {
+    return await authService.inviteUser(email, nome, papel);
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        isAuthenticated: !!user,
-        login,
-        logout,
-        loading,
+        usuario,
+        empresa,
+        isAutenticado: !!usuario,
+        isCarregando,
+        entrar,
+        cadastrar,
+        sair,
+        convidarUsuario,
       }}
     >
       {children}

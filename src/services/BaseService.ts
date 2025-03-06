@@ -1,86 +1,126 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import supabase from '../config/supabase'
+import { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../config/supabase';
+import { Database } from '../types/supabase';
+import { Cliente } from '../entities/Cliente';
 
-class BaseService<T> {
-  private supabase: SupabaseClient
-  private tableName: string
+export class BaseService<T extends { id: string; tenant_id: string }> {
+  protected supabase: SupabaseClient<Database>;
+  protected tableName: string;
 
   constructor(tableName: string) {
-    // Inicializa o cliente Supabase com as credenciais
-    this.supabase = supabase
-    this.tableName = tableName
+    this.supabase = supabase;
+    this.tableName = tableName;
   }
 
-  // Método para buscar um único item
+  protected async getCurrentTenantId(): Promise<string | null> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: userData } = await this.supabase
+      .from('users')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single();
+
+    return userData?.tenant_id || null;
+  }
+
   async getOne(id: string): Promise<T | null> {
-    const { data, error } = await this.supabase
-      .from(this.tableName)
-      .select('*')
-      .eq('id', id)
-      .single()
+    try {
+      const tenantId = await this.getCurrentTenantId();
+      if (!tenantId) throw new Error('No tenant ID found');
 
-    if (error) {
-      console.error('Erro ao buscar o item:', error.message)
-      return null
+      const { data, error } = await this.supabase
+        .from(this.tableName)
+        .select('*')
+        .eq('id', id)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (error) throw error;
+      return data as T;
+    } catch (error) {
+      console.error(`Error fetching ${this.tableName}:`, error);
+      return null;
     }
-    return data
   }
 
-  // Método para buscar múltiplos itens
-  async getMany(): Promise<T[]> {
-    const { data, error } = await this.supabase.from(this.tableName).select('*')
+  async getMany(): Promise<Cliente[]> {
+    try {
+      const tenantId = await this.getCurrentTenantId();
+      if (!tenantId) throw new Error('No tenant ID found');
 
-    if (error) {
-      console.error('Erro ao buscar os itens:', error.message)
-      return []
+      const { data, error } = await this.supabase
+        .from(this.tableName)
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as Cliente[];
+    } catch (error) {
+      console.error(`Error fetching ${this.tableName}:`, error);
+      return [];
     }
-    return data
   }
 
-  // Método para inserir um item
-  async insert(item: T): Promise<T | null> {
-    const { data, error } = await this.supabase.from(this.tableName).insert([item])
+  async insert(item: Omit<T, 'id'>): Promise<T | null> {
+    try {
+      const tenantId = await this.getCurrentTenantId();
+      if (!tenantId) throw new Error('No tenant ID found');
 
-    if (error) {
-      console.error('Erro ao adicionar o item:', error.message)
-      return null
+      const { data, error } = await this.supabase
+        .from(this.tableName)
+        .insert([{ ...item, tenant_id: tenantId }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as T;
+    } catch (error) {
+      console.error(`Error inserting ${this.tableName}:`, error);
+      return null;
     }
-
-    if (!data) {
-        throw new Error('Item não encontrado')
-    }
-
-    return data[0]
   }
 
-  // Método para atualizar um item
-  async update(id: string, item: T): Promise<T | null> {
-    const { data, error } = await this.supabase
-      .from(this.tableName)
-      .update(item)
-      .eq('id', id)
+  async update(id: string, item: Partial<T>): Promise<T | null> {
+    try {
+      const tenantId = await this.getCurrentTenantId();
+      if (!tenantId) throw new Error('No tenant ID found');
 
-    if (error) {
-      console.error('Erro ao atualizar o item:', error.message)
-      return null
+      const { data, error } = await this.supabase
+        .from(this.tableName)
+        .update(item)
+        .eq('id', id)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as T;
+    } catch (error) {
+      console.error(`Error updating ${this.tableName}:`, error);
+      return null;
     }
-
-    if (!data) {
-        throw new Error('Item não encontrado')
-    }
-
-    return data[0]
   }
 
-  // Método para deletar um item
   async delete(id: string): Promise<boolean> {
-    const { error } = await this.supabase.from(this.tableName).delete().eq('id', id)
+    try {
+      const tenantId = await this.getCurrentTenantId();
+      if (!tenantId) throw new Error('No tenant ID found');
 
-    if (error) {
-      console.error('Erro ao deletar o item:', error.message)
-      return false
+      const { error } = await this.supabase
+        .from(this.tableName)
+        .delete()
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error(`Error deleting ${this.tableName}:`, error);
+      return false;
     }
-    return true
   }
 }
 

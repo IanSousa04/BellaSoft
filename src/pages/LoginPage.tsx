@@ -9,22 +9,24 @@ import {
   InputAdornment,
   IconButton,
   useTheme,
-  Alert,
   useMediaQuery,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { Scissors } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const LoginPage = () => {
+  const [email, setEmail] = useState('ian04sousa@gmail.com');
+  const [password, setPassword] = useState('856247k4I@');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  const { login } = useAuth();
+  const [snackOpen, setSnackOpen] = useState(false); // Estado para o Snackbar
+
+  const { entrar } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -32,25 +34,32 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!email || !password) {
       setError('Por favor, preencha todos os campos.');
+      setSnackOpen(true);
       return;
     }
-    
+
     setLoading(true);
     try {
-      const success = await login(email, password);
+      const success = await entrar(email, password);
       if (success) {
         navigate('/dashboard');
       } else {
         setError('E-mail ou senha inválidos.');
+        setSnackOpen(true);
       }
     } catch (err) {
       setError('Ocorreu um erro ao fazer login. Tente novamente.');
+      setSnackOpen(true);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseSnack = () => {
+    setSnackOpen(false);
   };
 
   return (
@@ -88,28 +97,13 @@ const Login = () => {
             textAlign: 'center',
           }}
         >
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              mb: 4,
-            }}
-          >
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
             <Scissors size={64} color="white" />
             <Typography variant="h4" component="h1" fontWeight="bold" mt={2}>
               BellaSoft
             </Typography>
             <Typography variant="body1" mt={1}>
               Gestão eficiente e descomplicada
-            </Typography>
-          </Box>
-          <Box sx={{ mt: 4, maxWidth: '300px' }}>
-            {/* <Typography variant="body2" sx={{ mb: 2 }}>
-            Gerencie seu comércio com facilidade e sofisticação.
-            </Typography> */}
-            <Typography variant="body2">
-            Controle agendamentos, clientes, profissionais, serviços e muito mais, tudo em um único sistema!
             </Typography>
           </Box>
         </Box>
@@ -129,12 +123,6 @@ const Login = () => {
           <Typography variant="body2" color="text.secondary" mb={4}>
             Faça login para acessar o sistema
           </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
 
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
@@ -161,10 +149,7 @@ const Login = () => {
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                    >
+                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
@@ -176,14 +161,7 @@ const Login = () => {
                 Esqueci minha senha
               </Link>
             </Box>
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              disabled={loading}
-              sx={{ py: 1.5 }}
-            >
+            <Button type="submit" fullWidth variant="contained" size="large" disabled={loading} sx={{ py: 1.5 }}>
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </Box>
@@ -197,8 +175,15 @@ const Login = () => {
           </Box>
         </Box>
       </Paper>
+
+      {/* Snackbar para exibir erros */}
+      <Snackbar open={snackOpen} autoHideDuration={5000} onClose={handleCloseSnack} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
+        <Alert onClose={handleCloseSnack} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
 
-export default Login;
+export default LoginPage;

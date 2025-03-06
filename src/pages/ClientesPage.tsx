@@ -29,9 +29,8 @@ import {
   Delete as DeleteIcon,
   History as HistoryIcon,
 } from '@mui/icons-material';
-// import { mockClients } from '../data/mockData';
 import { Cliente } from '../entities/Cliente';
-import ClienteService from '../services/ClienteService';
+import { ClienteService } from '../services/ClienteService';
 
 const ClientesPage = () => {
   const theme = useTheme();
