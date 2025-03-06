@@ -9,7 +9,7 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error('Variaveis de ambiente não definidas');
 }
 
 // Create a single instance of the Supabase client
