@@ -60,7 +60,7 @@ const Login = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #9c27b0 0%, #f48fb1 100%)',
+        background: 'rgb(245, 240, 245)',
         p: 2,
       }}
     >
@@ -101,15 +101,15 @@ const Login = () => {
               BellaSoft
             </Typography>
             <Typography variant="body1" mt={1}>
-              Sistema de Gestão para Clínicas de Estética
+              Gestão eficiente e descomplicada
             </Typography>
           </Box>
           <Box sx={{ mt: 4, maxWidth: '300px' }}>
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              Gerencie sua clínica de estética com eficiência e elegância.
-            </Typography>
+            {/* <Typography variant="body2" sx={{ mb: 2 }}>
+            Gerencie seu comércio com facilidade e sofisticação.
+            </Typography> */}
             <Typography variant="body2">
-              Controle de agendamentos, clientes, profissionais, serviços e muito mais.
+            Controle agendamentos, clientes, profissionais, serviços e muito mais, tudo em um único sistema!
             </Typography>
           </Box>
         </Box>
@@ -145,7 +145,7 @@ const Login = () => {
               variant="outlined"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@bellasoft.com"
+              placeholder="demo@bellasoft.com"
               autoComplete="email"
             />
             <TextField
@@ -156,7 +156,7 @@ const Login = () => {
               variant="outlined"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="admin123"
+              placeholder="demo123"
               autoComplete="current-password"
               InputProps={{
                 endAdornment: (
@@ -192,7 +192,7 @@ const Login = () => {
             <Typography variant="caption" color="text.secondary">
               Credenciais de demonstração:
               <br />
-              Email: admin@bellasoft.com | Senha: admin123
+              Email: demo@bellasoft.com | Senha: demo123
             </Typography>
           </Box>
         </Box>

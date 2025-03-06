@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -29,27 +29,23 @@ import {
   Delete as DeleteIcon,
   History as HistoryIcon,
 } from '@mui/icons-material';
-import { mockClients } from '../data/mockData';
+// import { mockClients } from '../data/mockData';
+import { Cliente } from '../entities/Cliente';
+import ClienteService from '../services/ClienteService';
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  lastVisit: string;
-  totalVisits: number;
-}
-
-const Clients = () => {
+const ClientesPage = () => {
   const theme = useTheme();
-  const [clients, setClients] = useState<Client[]>(mockClients);
-  const [filteredClients, setFilteredClients] = useState<Client[]>(mockClients);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [filteredClients, setFilteredClients] = useState<Cliente[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openDialog, setOpenDialog] = useState(false);
-  const [currentClient, setCurrentClient] = useState<Client | null>(null);
+  const [currentClient, setCurrentClient] = useState<Cliente | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+
+  const clienteService = new ClienteService()
+
 
   // Form state
   const [formData, setFormData] = useState({
@@ -61,17 +57,17 @@ const Clients = () => {
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setSearchTerm(value);
-    
+
     if (value) {
-      const filtered = clients.filter(
+      const filtered = clientes?.filter(
         (client) =>
-          client.name.toLowerCase().includes(value.toLowerCase()) ||
+          client.nome.toLowerCase().includes(value.toLowerCase()) ||
           client.email.toLowerCase().includes(value.toLowerCase()) ||
-          client.phone.includes(value)
+          client.telefone.includes(value)
       );
       setFilteredClients(filtered);
     } else {
-      setFilteredClients(clients);
+      setFilteredClients(clientes);
     }
   };
 
@@ -84,13 +80,13 @@ const Clients = () => {
     setPage(0);
   };
 
-  const handleOpenDialog = (client?: Client) => {
+  const handleOpenDialog = (client?: Cliente) => {
     if (client) {
       setCurrentClient(client);
       setFormData({
-        name: client.name,
+        name: client.nome,
         email: client.email,
-        phone: client.phone,
+        phone: client.telefone,
       });
     } else {
       setCurrentClient(null);
@@ -107,7 +103,7 @@ const Clients = () => {
     setOpenDialog(false);
   };
 
-  const handleOpenDeleteDialog = (client: Client) => {
+  const handleOpenDeleteDialog = (client: Cliente) => {
     setCurrentClient(client);
     setOpenDeleteDialog(true);
   };
@@ -127,25 +123,25 @@ const Clients = () => {
   const handleSaveClient = () => {
     if (currentClient) {
       // Update existing client
-      const updatedClients = clients.map((client) =>
+      const updatedClients = clientes.map((client) =>
         client.id === currentClient.id
           ? { ...client, ...formData }
           : client
       );
-      setClients(updatedClients);
+      setClientes(updatedClients);
       setFilteredClients(updatedClients);
     } else {
       // Add new client
-      const newClient: Client = {
+      const newClient: Cliente = {
         id: Date.now().toString(),
-        name: formData.name,
+        nome: formData.name,
         email: formData.email,
-        phone: formData.phone,
-        lastVisit: 'Nunca',
-        totalVisits: 0,
+        telefone: formData.phone,
+        ultimaVisita: 'Nunca',
+        totalVisita: 0,
       };
-      const updatedClients = [...clients, newClient];
-      setClients(updatedClients);
+      const updatedClients = [...clientes, newClient];
+      setClientes(updatedClients);
       setFilteredClients(updatedClients);
     }
     handleCloseDialog();
@@ -153,18 +149,38 @@ const Clients = () => {
 
   const handleDeleteClient = () => {
     if (currentClient) {
-      const updatedClients = clients.filter((client) => client.id !== currentClient.id);
-      setClients(updatedClients);
+      const updatedClients = clientes.filter((client) => client.id !== currentClient.id);
+      setClientes(updatedClients);
       setFilteredClients(updatedClients);
     }
     handleCloseDeleteDialog();
   };
 
+const fetchClients = async () => {
+  try {
+    const resposta = await clienteService.getMany()
+    console.log("resposta",resposta)
+
+if (resposta && resposta.length > 0){
+  setClientes(resposta)
+}
+
+  } catch (error) {
+    console.error("Erro ao buscar clientes",error)
+  }
+
+
+}
+
+useEffect(() => {
+  fetchClients()
+},[])
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
         <Typography variant="h4" component="h1" fontWeight="bold">
-          Clientes
+          Cliente
         </Typography>
         <Button
           variant="contained"
@@ -205,17 +221,16 @@ const Clients = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredClients
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              {filteredClients.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((client) => (
                   <TableRow key={client.id} hover>
                     <TableCell component="th" scope="row">
-                      {client.name}
+                      {client.nome}
                     </TableCell>
                     <TableCell>{client.email}</TableCell>
-                    <TableCell>{client.phone}</TableCell>
+                    <TableCell>{client.telefone}</TableCell>
                     <TableCell>
-                      {client.lastVisit === 'Nunca' ? (
+                      {client.ultimaVisita === 'Nunca' ? (
                         <Chip
                           label="Nunca"
                           size="small"
@@ -225,10 +240,10 @@ const Clients = () => {
                           }}
                         />
                       ) : (
-                        client.lastVisit
+                        client.ultimaVisita
                       )}
                     </TableCell>
-                    <TableCell>{client.totalVisits}</TableCell>
+                    <TableCell>{client.totalVisita}</TableCell>
                     <TableCell align="right">
                       <Tooltip title="Histórico">
                         <IconButton color="primary">
@@ -281,7 +296,7 @@ const Clients = () => {
         />
       </Paper>
 
-      {/* Add/Edit Client Dialog */}
+      {/* Add/Edit Cliente Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
           {currentClient ? 'Editar Cliente' : 'Novo Cliente'}
@@ -336,7 +351,7 @@ const Clients = () => {
         <DialogContent>
           <Typography>
             Tem certeza que deseja excluir o cliente{' '}
-            <strong>{currentClient?.name}</strong>?
+            <strong>{currentClient?.nome}</strong>?
           </Typography>
           <Typography variant="body2" color="error" sx={{ mt: 2 }}>
             Esta ação não pode ser desfeita.
@@ -353,4 +368,4 @@ const Clients = () => {
   );
 };
 
-export default Clients;
+export default ClientesPage;

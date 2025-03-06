@@ -1,11 +1,17 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 
 // Mock user data
-const MOCK_USER = {
+const MOCK_USER_ADMIN = {
   id: '1',
   name: 'Administrador',
   email: 'admin@bellasoft.com',
   role: 'admin',
+};
+const MOCK_USER_DEMO = {
+  id: '2',
+  name: 'Demonstração',
+  email: 'demo@bellasoft.com',
+  role: 'demo',
 };
 
 interface User {
@@ -51,9 +57,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     // In a real app, this would be an API call
     // For now, we'll just check against our mock data
-    if (email === 'admin@bellasoft.com' && password === 'admin123') {
-      setUser(MOCK_USER);
-      localStorage.setItem('bellasoft_user', JSON.stringify(MOCK_USER));
+    if (email === 'admin@bellasoft.com' && password === 'admin2707') {
+      setUser(MOCK_USER_ADMIN);
+      localStorage.setItem('bellasoft_user', JSON.stringify(MOCK_USER_ADMIN));
+      return true;
+    } else if (email === 'demo@bellasoft.com' && password === 'demo123'){
+      setUser(MOCK_USER_DEMO);
+      localStorage.setItem('bellasoft_user', JSON.stringify(MOCK_USER_DEMO));
       return true;
     }
     return false;

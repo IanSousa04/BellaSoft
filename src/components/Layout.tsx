@@ -151,7 +151,7 @@ const Layout = () => {
         {/* Settings Section */}
         <ListItem disablePadding>
           <ListItemButton onClick={handleSettingsToggle}>
-            <ListItemIcon>
+            <ListItemIcon >
               <SettingsIcon />
             </ListItemIcon>
             <ListItemText primary="Configurações" />

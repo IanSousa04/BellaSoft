@@ -8,7 +8,7 @@ import ptBR from 'date-fns/locale/pt-BR';
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Clients from './pages/Clients';
+
 import Professionals from './pages/Professionals';
 import Services from './pages/Services';
 import Products from './pages/Products';
@@ -23,6 +23,7 @@ import Layout from './components/Layout';
 // Hooks
 import { useAuth } from './hooks/useAuth';
 import Cidades from './pages/Cidades';
+import ClientesPage from './pages/ClientesPage';
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -37,7 +38,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/clients" element={<Clients />} />
+            <Route path="/clients" element={<ClientesPage />} />
             <Route path="/professionals" element={<Professionals />} />
             <Route path="/services" element={<Services />} />
             <Route path="/products" element={<Products />} />

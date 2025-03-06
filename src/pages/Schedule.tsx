@@ -268,7 +268,7 @@ const Schedule = () => {
           ? {
               ...appointment,
               clientId: formData.clientId,
-              clientName: mockClients.find((c) => c.id === formData.clientId)?.name || '',
+              clientName: mockClients.find((c) => c.id === formData.clientId)?.nome || '',
               professionalId: formData.professionalId,
               professionalName: mockProfessionals.find((p) => p.id === formData.professionalId)?.name || '',
               serviceId: formData.serviceId,
@@ -287,7 +287,7 @@ const Schedule = () => {
       const newAppointment: Appointment = {
         id: Date.now().toString(),
         clientId: formData.clientId,
-        clientName: mockClients.find((c) => c.id === formData.clientId)?.name || '',
+        clientName: mockClients.find((c) => c.id === formData.clientId)?.nome || '',
         professionalId: formData.professionalId,
         professionalName: mockProfessionals.find((p) => p.id === formData.professionalId)?.name || '',
         serviceId: formData.serviceId,
@@ -850,7 +850,7 @@ const Schedule = () => {
               >
                 {mockClients.map((client) => (
                   <MenuItem key={client.id} value={client.id}>
-                    {client.name}
+                    {client.nome}
                   </MenuItem>
                 ))}
               </Select>

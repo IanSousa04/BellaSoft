@@ -1,5 +1,6 @@
 // Mock data for the application
 
+import { Cliente } from "../entities/Cliente";
 import { Professional } from "../pages/Professionals";
 import { Appointment } from "../pages/Schedule";
 
@@ -72,102 +73,22 @@ export const mockProfessionalCities = [
 ];
 
 // Clients
-export const mockClients = [
+export const mockClients: Cliente[] = [
   {
     id: '1',
-    name: 'Ana Silva',
+    nome: 'Ana Silva',
     email: 'ana.silva@email.com',
-    phone: '(11) 98765-4321',
-    lastVisit: '15/05/2025',
-    totalVisits: 8,
+    telefone: '(11) 98765-4321',
+    ultimaVisita: '15/05/2025',
+    totalVisita: 8,
   },
   {
     id: '2',
-    name: 'Carlos Oliveira',
+    nome: 'Carlos Oliveira',
     email: 'carlos.oliveira@email.com',
-    phone: '(11) 91234-5678',
-    lastVisit: '02/05/2025',
-    totalVisits: 3,
-  },
-  {
-    id: '3',
-    name: 'Mariana Santos',
-    email: 'mariana.santos@email.com',
-    phone: '(11) 99876-5432',
-    lastVisit: '28/04/2025',
-    totalVisits: 12,
-  },
-  {
-    id: '4',
-    name: 'Pedro Costa',
-    email: 'pedro.costa@email.com',
-    phone: '(11) 98888-7777',
-    lastVisit: 'Nunca',
-    totalVisits: 0,
-  },
-  {
-    id: '5',
-    name: 'Juliana Mendes',
-    email: 'juliana.mendes@email.com',
-    phone: '(11) 97777-6666',
-    lastVisit: '10/05/2025',
-    totalVisits: 5,
-  },
-  {
-    id: '6',
-    name: 'Roberto Almeida',
-    email: 'roberto.almeida@email.com',
-    phone: '(11) 96666-5555',
-    lastVisit: '05/05/2025',
-    totalVisits: 2,
-  },
-  {
-    id: '7',
-    name: 'Fernanda Lima',
-    email: 'fernanda.lima@email.com',
-    phone: '(11) 95555-4444',
-    lastVisit: '20/04/2025',
-    totalVisits: 7,
-  },
-  {
-    id: '8',
-    name: 'Gabriel Souza',
-    email: 'gabriel.souza@email.com',
-    phone: '(11) 94444-3333',
-    lastVisit: 'Nunca',
-    totalVisits: 0,
-  },
-  {
-    id: '9',
-    name: 'Camila Rodrigues',
-    email: 'camila.rodrigues@email.com',
-    phone: '(11) 93333-2222',
-    lastVisit: '12/05/2025',
-    totalVisits: 4,
-  },
-  {
-    id: '10',
-    name: 'Lucas Ferreira',
-    email: 'lucas.ferreira@email.com',
-    phone: '(11) 92222-1111',
-    lastVisit: '08/05/2025',
-    totalVisits: 6,
-  },
-  {
-    id: '11',
-    name: 'Beatriz Gomes',
-    email: 'beatriz.gomes@email.com',
-    phone: '(11) 91111-0000',
-    lastVisit: '01/05/2025',
-    totalVisits: 9,
-  },
-  {
-    id: '12',
-    name: 'Rafaela Martins',
-    email: 'rafaela.martins@email.com',
-    phone: '(11) 90000-9999',
-    lastVisit: 'Nunca',
-    totalVisits: 0,
+    telefone: '(11) 91234-5678',
+    ultimaVisita: '02/05/2025',
+    totalVisita: 3,
   },
 ];
 
